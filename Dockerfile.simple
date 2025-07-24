@@ -1,0 +1,14 @@
+FROM n8nio/n8n:latest
+
+# 環境変数設定
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=8080
+ENV NODE_ENV=production
+
+# ポート公開
+EXPOSE 8080
+
+# シンプルな起動スクリプト
+RUN echo '#!/bin/sh\necho "Starting n8n on port $N8N_PORT"\nexec n8n start' > /start.sh && chmod +x /start.sh
+
+CMD ["/start.sh"] 

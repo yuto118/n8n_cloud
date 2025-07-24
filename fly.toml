@@ -17,41 +17,24 @@ primary_region = "nrt"
   N8N_BASIC_AUTH_PASSWORD = "changeme"
   N8N_HOST = "0.0.0.0"
   PORT = "8080"
+  N8N_PORT = "8080"
   WEBHOOK_TUNNEL_URL = "https://n8n-app.fly.dev"
   NODE_OPTIONS = "--max-old-space-size=4096"
 
 [experimental]
   auto_rollback = true
 
-[[services]]
+[http_service]
   internal_port = 8080
-  protocol = "tcp"
-
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  [[services.tcp_checks]]
-    interval = 10000
-    timeout = 2000
-
-  [services.concurrency]
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  
+  [http_service.concurrency]
     type = "connections"
     soft_limit = 25
     hard_limit = 50
-
-  [services.http_checks]
-    interval = "30s"
-    timeout = "10s"
-    grace_period = "5s"
-    method = "GET"
-    path = "/healthz"
-    protocol = "http"
-    tls_skip_verify = false
 
 [[mounts]]
   source = "n8n_data"
