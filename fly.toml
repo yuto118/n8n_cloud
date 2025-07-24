@@ -3,51 +3,64 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'n8n-app-dry-frog-9139'
-primary_region = 'nrt'
+app = "n8n-app"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  GENERIC_TIMEZONE = "Asia/Tokyo"
+  TZ = "Asia/Tokyo"
+  N8N_BASIC_AUTH_ACTIVE = "true"
+  N8N_BASIC_AUTH_USER = "admin"
+  N8N_BASIC_AUTH_PASSWORD = "changeme"
+  N8N_HOST = "0.0.0.0"
+  N8N_PORT = "5678"
+  WEBHOOK_TUNNEL_URL = "https://n8n-app.fly.dev"
 
 [experimental]
   auto_rollback = true
 
-[build]
-  dockerfile = 'Dockerfile'
-
-[env]
-  GENERIC_TIMEZONE = 'Asia/Tokyo'
-  N8N_BASIC_AUTH_ACTIVE = 'true'
-  N8N_BASIC_AUTH_PASSWORD = 'changeme'
-  N8N_BASIC_AUTH_USER = 'admin'
-  N8N_HOST = '0.0.0.0'
-  N8N_PORT = '5678'
-  TZ = 'Asia/Tokyo'
-  WEBHOOK_TUNNEL_URL = 'https://n8n-app.fly.dev'
-
-[[mounts]]
-  source = 'n8n_data'
-  destination = '/home/node/.n8n'
-
 [[services]]
-  protocol = 'tcp'
   internal_port = 5678
+  protocol = "tcp"
 
   [[services.ports]]
     port = 80
-    handlers = ['http']
+    handlers = ["http"]
 
   [[services.ports]]
     port = 443
-    handlers = ['tls', 'http']
-
-  [services.concurrency]
-    type = 'connections'
-    hard_limit = 50
-    soft_limit = 25
+    handlers = ["tls", "http"]
 
   [[services.tcp_checks]]
-    interval = '10s'
-    timeout = '2s'
+    interval = 10000
+    timeout = 2000
 
-[[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 25
+    hard_limit = 50
+
+  [services.http_checks]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/healthz"
+    protocol = "http"
+    tls_skip_verify = false
+
+[[mounts]]
+  source = "n8n_data"
+  destination = "/home/node/.n8n"
+
+[deploy]
+  strategy = "immediate"
+
+[processes]
+  app = "n8n"
+
+[env]
+  NODE_OPTIONS = "--max-old-space-size=4096"
