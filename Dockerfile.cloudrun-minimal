@@ -1,0 +1,26 @@
+FROM node:18-alpine
+
+# 必要なパッケージのインストール
+RUN apk add --no-cache bash curl
+
+# n8nのインストール
+RUN npm install -g n8n
+
+# 環境変数
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=8080
+
+# ユーザー作成
+RUN addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node
+USER node
+WORKDIR /home/node
+
+# データディレクトリ
+RUN mkdir -p /home/node/.n8n
+
+# ポート公開
+EXPOSE 8080
+
+# シンプルな起動コマンド
+CMD ["sh", "-c", "echo 'Starting n8n on port 8080...' && N8N_PORT=8080 n8n start"] 

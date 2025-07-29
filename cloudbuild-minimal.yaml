@@ -1,0 +1,35 @@
+steps:
+  # 最小構成のDockerfileを使用してビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'Dockerfile.cloudrun-minimal',
+      '-t', 'gcr.io/$PROJECT_ID/n8n-minimal:latest',
+      '.'
+    ]
+
+  # Container Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/n8n-minimal:latest']
+
+  # Cloud Runにデプロイ（最小設定）
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'n8n-minimal-test',
+      '--image', 'gcr.io/$PROJECT_ID/n8n-minimal:latest',
+      '--region', 'asia-northeast1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '2Gi',
+      '--cpu', '1',
+      '--timeout', '600',
+      '--max-instances', '1',
+      '--port', '8080'
+    ]
+
+images:
+  - gcr.io/$PROJECT_ID/n8n-minimal:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY 

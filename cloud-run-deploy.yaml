@@ -1,0 +1,118 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: n8n-service
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        # リソース設定
+        run.googleapis.com/cpu: "2"
+        run.googleapis.com/memory: "4Gi"
+        run.googleapis.com/max-instances: "10"
+        run.googleapis.com/min-instances: "1"
+        # ストレージ設定
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+    spec:
+      serviceAccountName: n8n-service-account  # 必要に応じて作成
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/YOUR_PROJECT_ID/n8n:latest  # 実際のプロジェクトIDに置き換え
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        # 基本設定
+        - name: NODE_ENV
+          value: "production"
+        - name: N8N_HOST
+          value: "0.0.0.0"
+        - name: GENERIC_TIMEZONE
+          value: "Asia/Tokyo"
+        - name: TZ
+          value: "Asia/Tokyo"
+        
+        # 認証設定
+        - name: N8N_BASIC_AUTH_ACTIVE
+          value: "true"
+        - name: N8N_BASIC_AUTH_USER
+          value: "admin"
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secrets
+              key: admin-password
+        
+        # データベース設定（PostgreSQL推奨）
+        - name: DB_TYPE
+          value: "postgresdb"
+        - name: DB_POSTGRESDB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secrets
+              key: db-host
+        - name: DB_POSTGRESDB_PORT
+          value: "5432"
+        - name: DB_POSTGRESDB_DATABASE
+          value: "n8n"
+        - name: DB_POSTGRESDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secrets
+              key: db-user
+        - name: DB_POSTGRESDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secrets
+              key: db-password
+        
+        # Webhook設定
+        - name: WEBHOOK_URL
+          value: "https://YOUR_CLOUD_RUN_URL"  # デプロイ後のURLに置き換え
+        
+        # セキュリティ設定
+        - name: N8N_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secrets
+              key: encryption-key
+        
+        resources:
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+        
+        # ヘルスチェック設定
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        
+        # ボリュームマウント（Cloud SQL Proxy使用時）
+        volumeMounts:
+        - name: cloudsql
+          mountPath: /cloudsql
+          readOnly: true
+      
+      volumes:
+      - name: cloudsql
+        emptyDir: {} 

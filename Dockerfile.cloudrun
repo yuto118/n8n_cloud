@@ -1,0 +1,30 @@
+FROM n8nio/n8n:latest
+
+# 環境変数の設定
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+
+# 必要なパッケージのインストール
+USER root
+RUN apk add --no-cache curl bash
+USER node
+
+# シンプルなスタートアップスクリプトを作成
+RUN echo '#!/bin/bash\n\
+echo "=== n8n Cloud Run Startup ==="\n\
+echo "PORT environment variable: $PORT"\n\
+echo "Setting N8N_PORT to: ${PORT:-8080}"\n\
+export N8N_PORT=${PORT:-8080}\n\
+echo "Final N8N_PORT: $N8N_PORT"\n\
+echo "Starting n8n..."\n\
+exec n8n start' > /home/node/start.sh && chmod +x /home/node/start.sh
+
+# ポートの公開
+EXPOSE 8080
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/healthz || exit 1
+
+# スタートアップスクリプトを実行
+CMD ["/home/node/start.sh"] 

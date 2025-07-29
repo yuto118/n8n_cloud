@@ -1,0 +1,48 @@
+FROM n8nio/n8n:latest
+
+# 環境変数
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+
+# 必要なパッケージをインストール
+USER root
+RUN apk add --no-cache bash curl netstat-nat
+USER node
+
+# デバッグ用の詳細スタートアップスクリプトを作成
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "=== n8n Cloud Run Debug Startup ==="\n\
+echo "Current user: $(whoami)"\n\
+echo "Current directory: $(pwd)"\n\
+echo "Environment variables:"\n\
+echo "  PORT: ${PORT}"\n\
+echo "  N8N_HOST: ${N8N_HOST}"\n\
+echo "  N8N_PORT: ${N8N_PORT}"\n\
+echo "  NODE_ENV: ${NODE_ENV}"\n\
+echo ""\n\
+# PORT環境変数をN8N_PORTに設定\n\
+if [ -n "$PORT" ]; then\n\
+    export N8N_PORT="$PORT"\n\
+    echo "Using Cloud Run PORT: $PORT"\n\
+else\n\
+    export N8N_PORT="8080"\n\
+    echo "No PORT set, using default: 8080"\n\
+fi\n\
+echo "Final N8N_PORT: $N8N_PORT"\n\
+echo ""\n\
+echo "Starting n8n..."\n\
+echo "Command: n8n start"\n\
+echo ""\n\
+# n8nを起動（フォアグラウンドで実行）\n\
+exec n8n start' > /home/node/debug-start.sh && chmod +x /home/node/debug-start.sh
+
+# ポートの公開
+EXPOSE 8080
+
+# デバッグ用ヘルスチェック（起動時間を長めに設定）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD curl -f http://localhost:${PORT:-8080}/healthz || curl -f http://localhost:8080/healthz || exit 1
+
+# デバッグスクリプトを実行
+CMD ["/home/node/debug-start.sh"] 
