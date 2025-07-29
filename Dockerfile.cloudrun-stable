@@ -1,0 +1,42 @@
+# 安定したベースイメージを使用
+FROM node:18-alpine
+
+# 作業ディレクトリの設定
+WORKDIR /app
+
+# 必要なパッケージをインストール
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    ca-certificates
+
+# n8nをインストール
+RUN npm install -g n8n@latest
+
+# 非rootユーザーを作成
+RUN addgroup -g 1000 n8n && \
+    adduser -u 1000 -G n8n -s /bin/sh -D n8n
+
+# データディレクトリを作成
+RUN mkdir -p /home/n8n/.n8n && \
+    chown -R n8n:n8n /home/n8n
+
+# ユーザーを切り替え
+USER n8n
+WORKDIR /home/n8n
+
+# 環境変数
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=8080
+
+# ポート公開
+EXPOSE 8080
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/healthz || exit 1
+
+# 起動コマンド
+CMD ["sh", "-c", "echo 'Starting n8n...' && n8n start"] 

@@ -1,0 +1,19 @@
+steps:
+  # シンプルなDockerfileでテストビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'Dockerfile.test',
+      '-t', 'gcr.io/$PROJECT_ID/n8n-test:latest',
+      '.'
+    ]
+
+  # Container Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/n8n-test:latest']
+
+images:
+  - gcr.io/$PROJECT_ID/n8n-test:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY 

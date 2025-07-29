@@ -1,0 +1,59 @@
+FROM n8nio/n8n:latest
+
+# 環境変数を設定
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=8080
+ENV PORT=8080
+
+# 起動を高速化するための設定
+ENV N8N_SKIP_WEBHOOK_DEREGISTRATION=true
+ENV N8N_DISABLE_PRODUCTION_MAIN_PROCESS=false
+
+# 必要なパッケージをインストール
+USER root
+RUN apk add --no-cache bash curl netcat-openbsd
+USER node
+
+# 高速起動用のスクリプトを作成
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "=== n8n Cloud Run Fast Startup ==="\n\
+echo "PORT: ${PORT}"\n\
+echo "N8N_PORT: ${N8N_PORT}"\n\
+\n\
+# ポートを確実に8080に設定\n\
+export N8N_PORT=8080\n\
+export PORT=8080\n\
+\n\
+echo "Starting n8n on port 8080..."\n\
+\n\
+# バックグラウンドでn8nを起動\n\
+n8n start &\n\
+N8N_PID=$!\n\
+\n\
+echo "n8n PID: $N8N_PID"\n\
+\n\
+# ポート8080が利用可能になるまで待機\n\
+echo "Waiting for port 8080 to be ready..."\n\
+for i in {1..60}; do\n\
+    if nc -z localhost 8080; then\n\
+        echo "Port 8080 is ready!"\n\
+        break\n\
+    fi\n\
+    echo "Attempt $i: Port 8080 not ready, waiting..."\n\
+    sleep 2\n\
+done\n\
+\n\
+# n8nプロセスを前面に戻す\n\
+echo "n8n is ready, bringing to foreground..."\n\
+wait $N8N_PID' > /tmp/start-robust.sh && chmod +x /tmp/start-robust.sh
+
+# ポート公開
+EXPOSE 8080
+
+# ヘルスチェックを無効化（Cloud Runのprobe使用）
+# HEALTHCHECK NONE
+
+# カスタムスタートアップスクリプトを実行
+CMD ["/tmp/start-robust.sh"] 

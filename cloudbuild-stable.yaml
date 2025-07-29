@@ -1,0 +1,63 @@
+steps:
+  # Step 0: ファイルの存在確認
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "=== Checking files ==="
+        ls -la
+        echo "=== Checking Dockerfile ==="
+        if [ -f "Dockerfile.cloudrun-stable" ]; then
+          echo "✓ Dockerfile.cloudrun-stable found"
+          cat Dockerfile.cloudrun-stable
+        else
+          echo "✗ Dockerfile.cloudrun-stable not found"
+          exit 1
+        fi
+
+  # Step 1: Dockerイメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'Dockerfile.cloudrun-stable',
+      '-t', 'gcr.io/$PROJECT_ID/n8n-stable:$BUILD_ID',
+      '-t', 'gcr.io/$PROJECT_ID/n8n-stable:latest',
+      '.'
+    ]
+    env:
+      - 'DOCKER_BUILDKIT=1'
+
+  # Step 2: イメージの詳細確認
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['images', 'gcr.io/$PROJECT_ID/n8n-stable:latest']
+
+  # Step 3: Container Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/n8n-stable:latest']
+
+  # Step 4: Cloud Runにデプロイ
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'n8n-stable',
+      '--image', 'gcr.io/$PROJECT_ID/n8n-stable:latest',
+      '--region', 'asia-northeast1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '2Gi',
+      '--cpu', '2',
+      '--timeout', '600',
+      '--max-instances', '3',
+      '--port', '8080',
+      '--set-env-vars', 'NODE_ENV=production,N8N_HOST=0.0.0.0,N8N_PORT=8080,GENERIC_TIMEZONE=Asia/Tokyo'
+    ]
+
+images:
+  - gcr.io/$PROJECT_ID/n8n-stable:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '1200s'  # 20分のタイムアウト 

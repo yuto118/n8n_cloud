@@ -1,0 +1,16 @@
+FROM n8nio/n8n:latest
+
+# 環境変数
+ENV NODE_ENV=production
+ENV N8N_HOST=0.0.0.0
+
+# 必要なパッケージ
+USER root
+RUN apk add --no-cache bash curl
+USER node
+
+# ポート公開
+EXPOSE 8080
+
+# 直接ポート8080でn8nを起動（環境変数に依存しない）
+CMD ["sh", "-c", "echo 'Starting n8n on port 8080...' && n8n start --host=0.0.0.0 --port=8080"] 

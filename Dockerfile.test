@@ -1,0 +1,12 @@
+# 公式のn8nイメージを直接使用
+FROM n8nio/n8n:latest
+
+# 環境変数のみ設定
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=8080
+
+# ポート公開
+EXPOSE 8080
+
+# 起動コマンド（シンプル）
+CMD ["n8n", "start"] 
